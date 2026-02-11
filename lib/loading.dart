@@ -33,27 +33,30 @@ class _HexagonTechLoadingState extends State<HexagonTechLoading>
     return AnimatedBuilder(
       animation: controller,
       builder: (_, __) {
-        final rotation = controller.value * 2 * pi;
-        final fusionPhase = (sin(rotation * 0.85) + 1) / 2;
+        final timeline = controller.value;
+        final rotation = timeline * 2 * pi;
+        final fusionPhase = 0.5 - 0.5 * cos(timeline * 2 * pi);
         final mergeCurve = Curves.easeInOutCubic.transform(fusionPhase);
+        final textMergeCurve = Curves.easeInOutSine.transform(fusionPhase);
         final divergence = 1 - mergeCurve;
         final outerRotation = rotation * (1.05 + 0.25 * divergence);
         final innerRotation = -rotation * (1.18 + 0.32 * mergeCurve);
-        final pulse = (0.94 + 0.12 * sin(rotation * 1.3)) *
-          lerpDouble(1.08, 0.9, mergeCurve)!;
-        final innerPulse = (0.84 + 0.16 * sin(rotation * 1.9)) *
-          lerpDouble(0.78, 1.06, mergeCurve)!;
-        final glow = 5.5 +
-          2.8 * (0.5 + 0.5 * sin(rotation * 2)) +
-          mergeCurve * 2.4;
+        final pulse = (0.94 + 0.12 * sin(rotation * 3)) *
+            lerpDouble(1.08, 0.9, mergeCurve)!;
+        final innerPulse = (0.84 + 0.16 * sin(rotation * 5)) *
+            lerpDouble(0.78, 1.06, mergeCurve)!;
+        final glow =
+            5.5 + 2.8 * (0.5 + 0.5 * sin(rotation * 2)) + mergeCurve * 2.4;
         final haloIntensity =
-          0.18 + 0.1 * (0.5 + 0.5 * sin(rotation * 1.5)) + mergeCurve * 0.05;
-        final sweepShift = 0.3 + 0.17 * sin(rotation * 0.7);
+            0.18 + 0.1 * (0.5 + 0.5 * sin(rotation * 1.5)) + mergeCurve * 0.05;
+        final sweepShift = 0.3 + 0.17 * sin(rotation * 2);
         final textGlowPulse =
-          0.35 + 0.65 * (0.5 + 0.5 * sin(rotation * 1.6)) + mergeCurve * 0.2;
-        final underlineProgress = (controller.value * 1.35) % 1;
-        final textZoom = 1.0 + 0.06 * sin(rotation * 1.15) + mergeCurve * 0.05;
-        final verticalDrift = 2 * sin(rotation * 0.9) * (0.6 + 0.4 * mergeCurve);
+            0.35 + 0.65 * (0.5 + 0.5 * sin(rotation * 3)) + mergeCurve * 0.2;
+        final underlineProgress = 0.5 - 0.5 * cos(timeline * 2 * pi);
+        final textZoom =
+            1.0 + 0.06 * sin(rotation * 2) + mergeCurve * 0.05;
+        final verticalDrift =
+            2 * sin(rotation) * (0.6 + 0.4 * mergeCurve);
         final aiShadowColor =
             Colors.cyanAccent.withOpacity(0.2 + haloIntensity * 0.4);
         final fusionShadowColor =
@@ -72,8 +75,9 @@ class _HexagonTechLoadingState extends State<HexagonTechLoading>
             ),
           ],
         );
-        final aiOffsetX = lerpDouble(-68, 0, mergeCurve)!;
-        final fusionOffsetX = lerpDouble(68, 0, mergeCurve)!;
+        final aiOffsetX = lerpDouble(-68, 0, textMergeCurve)!;
+        final fusionOffsetX = lerpDouble(68, 0, textMergeCurve)!;
+        final textSpacing = lerpDouble(20, 12, textMergeCurve)!;
         final fusionFlash =
           max(0.0, 1 - (mergeCurve - 0.52).abs() * 3.4).clamp(0.0, 1.0);
 
@@ -220,9 +224,9 @@ class _HexagonTechLoadingState extends State<HexagonTechLoading>
                       _buildOrbitingDots(rotation, mergeCurve),
                       Container(
                         width: lerpDouble(52, 70, fusionFlash)! +
-                            10 * sin(rotation * 1.05),
+                          10 * sin(rotation * 2),
                         height: lerpDouble(52, 70, fusionFlash)! +
-                            10 * sin(rotation * 1.05),
+                          10 * sin(rotation * 2),
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
@@ -282,6 +286,7 @@ class _HexagonTechLoadingState extends State<HexagonTechLoading>
                       verticalDrift: verticalDrift,
                       aiOffsetX: aiOffsetX,
                       fusionOffsetX: fusionOffsetX,
+                      textSpacing: textSpacing,
                       baseTextStyle: baseTextStyle,
                       aiShadowColor: aiShadowColor,
                       aiShadowBlur: aiShadowBlur,
@@ -486,8 +491,8 @@ Widget _buildOrbitingDots(double rotation, double mergeCurve) {
     child: Stack(
       children: List.generate(3, (index) {
         final angle = rotation + (2 * pi / 3) * index;
-        final radius = tightenedRadius +
-            trailWave * sin(rotation * (2.1 + mergeCurve * 0.4) + index);
+        final wavePhase = rotation * 4 + (2 * pi / 3) * index;
+        final radius = tightenedRadius + trailWave * sin(wavePhase);
         final dx = center + radius * cos(angle);
         final dy = center + radius * sin(angle);
         final dotSize = lerpDouble(18, 14, mergeCurve)!;
@@ -853,6 +858,7 @@ Widget _buildFusionTitle({
   required double verticalDrift,
   required double aiOffsetX,
   required double fusionOffsetX,
+  required double textSpacing,
   required TextStyle baseTextStyle,
   required Color aiShadowColor,
   required double aiShadowBlur,
@@ -860,8 +866,6 @@ Widget _buildFusionTitle({
   required double fusionShadowBlur,
   required double fusionFlash,
 }) {
-  final spacing = 12 + 8 * (1 - fusionFlash);
-
   return Transform.translate(
     offset: Offset(0, verticalDrift),
     child: Transform.scale(
@@ -924,7 +928,7 @@ Widget _buildFusionTitle({
                     ),
                   ),
                 ),
-                SizedBox(width: spacing),
+                SizedBox(width: textSpacing),
                 Transform.translate(
                   offset: Offset(fusionOffsetX, 0),
                   child: Text(
